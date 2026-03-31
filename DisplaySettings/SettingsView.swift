@@ -1,0 +1,231 @@
+// SettingsView.swift
+// App preferences sheet: launch at login, menu bar indicator, hotkeys, schedule, presets.
+
+import SwiftUI
+
+struct SettingsView: View {
+    @ObservedObject private var settings = SettingsManager.shared
+    @ObservedObject private var schedule = ScheduleManager.shared
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showAddSchedule = false
+    @State private var newScheduleHour: Int = 8
+    @State private var newScheduleMinute: Int = 0
+    @State private var newScheduleBrightness: Double = 70
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Settings")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundColor(.accentColor)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+
+                    // MARK: General
+                    sectionHeader("General")
+                    SettingsRow(icon: "power", title: "Launch at Login") {
+                        Toggle("", isOn: $settings.launchAtLogin).labelsHidden()
+                    }
+                    Divider().padding(.leading, 42)
+                    SettingsRow(icon: "percent", title: "Brightness in Menu Bar") {
+                        Toggle("", isOn: $settings.showBrightnessInMenuBar).labelsHidden()
+                    }
+
+                    // MARK: Hotkeys
+                    sectionHeader("Global Hotkeys")
+                        .padding(.top, 4)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label("Ctrl+Cmd+↑  →  All displays +5%", systemImage: "command")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Label("Ctrl+Cmd+↓  →  All displays -5%", systemImage: "command")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+
+                    // MARK: Scheduled Brightness
+                    sectionHeader("Scheduled Brightness")
+                        .padding(.top, 4)
+                    SettingsRow(icon: "clock", title: "Auto Schedule") {
+                        Toggle("", isOn: $schedule.isEnabled).labelsHidden()
+                    }
+
+                    if !schedule.entries.isEmpty {
+                        ForEach(schedule.entries.sorted(by: { $0.hour * 60 + $0.minute < $1.hour * 60 + $1.minute })) { entry in
+                            HStack {
+                                Text(entry.displayString)
+                                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                                    .padding(.leading, 16)
+                                Spacer()
+                                Button {
+                                    schedule.deleteEntry(id: entry.id)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.red.opacity(0.7))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 16)
+                            }
+                            .frame(height: 30)
+                            Divider().padding(.leading, 16)
+                        }
+                    }
+
+                    Button {
+                        showAddSchedule = true
+                    } label: {
+                        Label("Add Rule", systemImage: "plus.circle")
+                            .font(.system(size: 11))
+                            .foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+
+                    // MARK: Presets
+                    sectionHeader("Presets")
+                        .padding(.top, 4)
+
+                    if settings.presets.isEmpty {
+                        Text("No presets. Add one from the main view.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                    } else {
+                        ForEach(settings.presets) { preset in
+                            HStack {
+                                Text(preset.name)
+                                    .font(.system(size: 12))
+                                    .padding(.leading, 16)
+                                Spacer()
+                                Text("\(Int(preset.brightness.rounded()))%")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                Button {
+                                    settings.deletePreset(id: preset.id)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.red.opacity(0.7))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 16)
+                            }
+                            .frame(height: 34)
+                            if preset.id != settings.presets.last?.id {
+                                Divider().padding(.leading, 16)
+                            }
+                        }
+                    }
+                }
+                .padding(.bottom, 12)
+            }
+        }
+        .frame(width: 300, height: 460)
+        .sheet(isPresented: $showAddSchedule) { addScheduleSheet }
+    }
+
+    // MARK: - Add Schedule Sheet
+
+    private var addScheduleSheet: some View {
+        VStack(spacing: 16) {
+            Text("Add Schedule Rule")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                VStack(spacing: 4) {
+                    Text("Hour").font(.system(size: 11)).foregroundColor(.secondary)
+                    Stepper("\(newScheduleHour)", value: $newScheduleHour, in: 0...23)
+                        .frame(width: 90)
+                }
+                VStack(spacing: 4) {
+                    Text("Minute").font(.system(size: 11)).foregroundColor(.secondary)
+                    Stepper(String(format: "%02d", newScheduleMinute),
+                            value: $newScheduleMinute, in: 0...59, step: 5)
+                        .frame(width: 90)
+                }
+            }
+
+            VStack(spacing: 4) {
+                Text("Brightness: \(Int(newScheduleBrightness.rounded()))%")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Slider(value: $newScheduleBrightness, in: 0...100, step: 5)
+                    .frame(width: 200)
+            }
+
+            HStack(spacing: 12) {
+                Button("Cancel") { showAddSchedule = false }
+                Button("Add") {
+                    schedule.addEntry(ScheduleEntry(
+                        hour: newScheduleHour,
+                        minute: newScheduleMinute,
+                        brightness: newScheduleBrightness
+                    ))
+                    showAddSchedule = false
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 280)
+    }
+
+    // MARK: - Helpers
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Reusable row
+
+struct SettingsRow<Content: View>: View {
+    let icon: String
+    let title: String
+    let content: Content
+
+    init(icon: String, title: String, @ViewBuilder content: () -> Content) {
+        self.icon = icon
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundColor(.accentColor)
+                .frame(width: 18)
+                .padding(.leading, 16)
+            Text(title)
+                .font(.system(size: 12))
+            Spacer()
+            content
+                .padding(.trailing, 16)
+        }
+        .frame(height: 40)
+    }
+}

@@ -1,5 +1,5 @@
 // DisplayManager.swift
-// Discovers connected external displays, reads/writes brightness via DDCHelper.
+// Discovers connected external displays, reads/writes brightness & contrast via DDCHelper.
 
 import Foundation
 import AppKit
@@ -13,11 +13,19 @@ final class DisplayManager: ObservableObject {
     @Published var displays: [DisplayModel] = []
     @Published var isRefreshing: Bool = false
 
-    // Debounce: one pending write task per display ID
-    private var pendingWrites: [CGDirectDisplayID: DispatchWorkItem] = [:]
+    private var pendingWrites:         [CGDirectDisplayID: DispatchWorkItem] = [:]
+    private var pendingContrastWrites: [CGDirectDisplayID: DispatchWorkItem] = [:]
 
     init() {
         Task { await refresh() }
+    }
+
+    // MARK: - Computed
+
+    var masterBrightness: Double {
+        let active = displays.filter { $0.ddcSupported }
+        guard !active.isEmpty else { return 50 }
+        return active.map(\.brightness).reduce(0, +) / Double(active.count)
     }
 
     // MARK: - Refresh
@@ -38,18 +46,27 @@ final class DisplayManager: ObservableObject {
 
             for i in 0..<Int(displayCount) {
                 let id = displayIDs[i]
-                // Skip the built-in Retina display
                 if CGDisplayIsBuiltin(id) != 0 { continue }
 
                 let name = DisplayManager.displayName(for: id)
-                var model = DisplayModel(id: id, name: name, brightness: 50,
-                                        maxBrightness: 100, ddcSupported: true, isLoading: false)
+                var model = DisplayModel(id: id, name: name)
 
                 if let (val, maxVal) = DDCHelper.readBrightness(displayID: id), maxVal > 0 {
-                    let pct = Double(val) / Double(maxVal) * 100.0
-                    model.brightness = min(max(pct, 0), 100)
+                    model.brightness    = min(max(Double(val) / Double(maxVal) * 100.0, 0), 100)
                     model.maxBrightness = Double(maxVal)
-                    model.ddcSupported = true
+                    model.ddcSupported  = true
+
+                    if let (cVal, cMax) = DDCHelper.readContrast(displayID: id), cMax > 0 {
+                        model.contrast    = min(max(Double(cVal) / Double(cMax) * 100.0, 0), 100)
+                        model.maxContrast = Double(cMax)
+                    }
+                    if let (vVal, vMax) = DDCHelper.readVolume(displayID: id), vMax > 0 {
+                        model.volume    = min(max(Double(vVal) / Double(vMax) * 100.0, 0), 100)
+                        model.maxVolume = Double(vMax)
+                    }
+                    if let (src, _) = DDCHelper.readInputSource(displayID: id) {
+                        model.inputSource = src
+                    }
                 } else {
                     model.ddcSupported = false
                 }
@@ -58,41 +75,87 @@ final class DisplayManager: ObservableObject {
             return result
         }.value
 
-        // Enrich names with NSScreen.localizedName on the main actor
         DisplayManager.enrichDisplayNames(&models)
         return models
     }
 
-    // MARK: - Brightness write (debounced 300 ms)
+    // MARK: - Brightness
 
     func setBrightness(_ brightness: Double, for displayID: CGDirectDisplayID) {
-        // Update the UI value immediately
         if let idx = displays.firstIndex(where: { $0.id == displayID }) {
             displays[idx].brightness = brightness
         }
-        // Cancel any pending DDC write for this display
         pendingWrites[displayID]?.cancel()
-
         let item = DispatchWorkItem {
-            let intValue = Int(brightness.rounded())
-            DDCHelper.writeBrightness(displayID: displayID, value: intValue)
+            DDCHelper.writeBrightness(displayID: displayID, value: Int(brightness.rounded()))
         }
         pendingWrites[displayID] = item
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3, execute: item)
     }
 
+    func setMasterBrightness(_ brightness: Double) {
+        for display in displays where display.ddcSupported {
+            setBrightness(brightness, for: display.id)
+        }
+    }
+
+    // MARK: - Contrast
+
+    func setContrast(_ contrast: Double, for displayID: CGDirectDisplayID) {
+        if let idx = displays.firstIndex(where: { $0.id == displayID }) {
+            displays[idx].contrast = contrast
+        }
+        pendingContrastWrites[displayID]?.cancel()
+        let item = DispatchWorkItem {
+            DDCHelper.writeContrast(displayID: displayID, value: Int(contrast.rounded()))
+        }
+        pendingContrastWrites[displayID] = item
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3, execute: item)
+    }
+
+    // MARK: - Volume
+
+    func setVolume(_ volume: Double, for displayID: CGDirectDisplayID) {
+        if let idx = displays.firstIndex(where: { $0.id == displayID }) {
+            displays[idx].volume = volume
+        }
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3) {
+            DDCHelper.writeVolume(displayID: displayID, value: Int(volume.rounded()))
+        }
+    }
+
+    // MARK: - Input Source
+
+    func setInputSource(_ source: Int, for displayID: CGDirectDisplayID) {
+        if let idx = displays.firstIndex(where: { $0.id == displayID }) {
+            displays[idx].inputSource = source
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            DDCHelper.writeInputSource(displayID: displayID, value: source)
+        }
+    }
+
+    // MARK: - Presets
+
+    func applyPreset(_ preset: BrightnessPreset) {
+        setMasterBrightness(preset.brightness)
+    }
+
+    // MARK: - Power
+
+    func setPower(on: Bool, for displayID: CGDirectDisplayID) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            DDCHelper.setPower(displayID: displayID, on: on)
+        }
+    }
+
     // MARK: - Display name resolution
 
-    /// Safe to call from any thread (no NSScreen access).
     nonisolated static func displayName(for displayID: CGDirectDisplayID) -> String {
-        // IOKit name lookup — thread-safe
-        if let name = ioKitDisplayName(for: displayID), !name.isEmpty {
-            return name
-        }
+        if let name = ioKitDisplayName(for: displayID), !name.isEmpty { return name }
         return "External Display \(displayID)"
     }
 
-    /// Must be called from MainActor for NSScreen access.
     @MainActor
     static func enrichDisplayNames(_ displays: inout [DisplayModel]) {
         for i in displays.indices {
@@ -103,12 +166,17 @@ final class DisplayManager: ObservableObject {
                 let localizedName = screen.localizedName
                 if !localizedName.isEmpty && displays[i].name.hasPrefix("External Display") {
                     displays[i] = DisplayModel(
-                        id: displays[i].id,
-                        name: localizedName,
-                        brightness: displays[i].brightness,
+                        id:            displays[i].id,
+                        name:          localizedName,
+                        brightness:    displays[i].brightness,
+                        contrast:      displays[i].contrast,
                         maxBrightness: displays[i].maxBrightness,
-                        ddcSupported: displays[i].ddcSupported,
-                        isLoading: displays[i].isLoading
+                        maxContrast:   displays[i].maxContrast,
+                        volume:        displays[i].volume,
+                        maxVolume:     displays[i].maxVolume,
+                        inputSource:   displays[i].inputSource,
+                        ddcSupported:  displays[i].ddcSupported,
+                        isLoading:     displays[i].isLoading
                     )
                 }
             }

@@ -1,22 +1,29 @@
 // StatusBarController.swift
-// Manages the NSStatusItem and NSPopover lifecycle.
+// Manages the NSStatusItem, NSPopover, and menu bar brightness indicator.
 
 import AppKit
 import SwiftUI
+import Combine
 
+@MainActor
 final class StatusBarController: NSObject {
 
     private var statusItem: NSStatusItem
     private var popover: NSPopover
     private var eventMonitor: EventMonitor?
+    private let displayManager: DisplayManager
+    private var cancellables: Set<AnyCancellable> = []
 
     override init() {
+        displayManager = DisplayManager()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         popover = NSPopover()
         super.init()
         configureStatusItem()
         configurePopover()
         setupEventMonitor()
+        observeDisplays()
+        setupHotkeysAndSchedule()
     }
 
     // MARK: - Setup
@@ -31,7 +38,10 @@ final class StatusBarController: NSObject {
     }
 
     private func configurePopover() {
-        popover.contentViewController = NSHostingController(rootView: ContentView())
+        popover.contentViewController = NSHostingController(
+            rootView: ContentView()
+                .environmentObject(displayManager)
+        )
         popover.behavior = .transient
         popover.animates = true
     }
@@ -41,6 +51,46 @@ final class StatusBarController: NSObject {
             guard let self, self.popover.isShown else { return }
             self.closePopover()
         }
+    }
+
+    // MARK: - Hotkeys & Schedule
+
+    private func setupHotkeysAndSchedule() {
+        HotkeyManager.shared.register(displayManager: displayManager)
+        ScheduleManager.shared.attach(displayManager: displayManager)
+    }
+
+    // MARK: - Menu Bar Brightness Indicator
+
+    private func observeDisplays() {
+        // Observe display changes AND the menu bar setting together
+        let displaysPublisher = displayManager.$displays.eraseToAnyPublisher()
+        let settingPublisher  = SettingsManager.shared.$showBrightnessInMenuBar.eraseToAnyPublisher()
+
+        Publishers.CombineLatest(displaysPublisher, settingPublisher)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] displays, showIndicator in
+                self?.updateMenuBarIndicator(displays: displays, show: showIndicator)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func updateMenuBarIndicator(displays: [DisplayModel], show: Bool) {
+        let button = statusItem.button
+        guard show else {
+            button?.title = ""
+            statusItem.length = NSStatusItem.squareLength
+            return
+        }
+        let active = displays.filter { $0.ddcSupported }
+        guard !active.isEmpty else {
+            button?.title = ""
+            statusItem.length = NSStatusItem.squareLength
+            return
+        }
+        let avg = Int((active.map(\.brightness).reduce(0, +) / Double(active.count)).rounded())
+        button?.title = " \(avg)%"
+        statusItem.length = NSStatusItem.variableLength
     }
 
     // MARK: - Actions
@@ -66,7 +116,6 @@ final class StatusBarController: NSObject {
 }
 
 // MARK: - EventMonitor
-// Closes the popover when clicking outside it.
 
 final class EventMonitor: NSObject {
     private var monitor: Any?

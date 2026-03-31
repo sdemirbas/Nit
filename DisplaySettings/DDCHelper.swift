@@ -95,6 +95,82 @@ final class DDCHelper {
         return writeDDCViaIOKit(displayID: displayID, vcp: 0x10, value: value)
     }
 
+    // Contrast (VCP 0x12)
+    static func readContrast(displayID: CGDirectDisplayID) -> (value: Int, max: Int)? {
+        loadAVService()
+        if let svc = findAVService(for: displayID) {
+            if let r = readDDCViaAVService(service: svc, vcp: 0x12) { return r }
+        }
+        return readDDCViaIOKit(displayID: displayID, vcp: 0x12)
+    }
+
+    @discardableResult
+    static func writeContrast(displayID: CGDirectDisplayID, value: Int) -> Bool {
+        loadAVService()
+        if let svc = findAVService(for: displayID) {
+            if writeDDCViaAVService(service: svc, vcp: 0x12, value: value) { return true }
+        }
+        return writeDDCViaIOKit(displayID: displayID, vcp: 0x12, value: value)
+    }
+
+    // Power (VCP 0xD6): 1 = on, 4 = standby/sleep
+    @discardableResult
+    static func setPower(displayID: CGDirectDisplayID, on: Bool) -> Bool {
+        loadAVService()
+        let value = on ? 1 : 4
+        if let svc = findAVService(for: displayID) {
+            if writeDDCViaAVService(service: svc, vcp: 0xD6, value: value) { return true }
+        }
+        return writeDDCViaIOKit(displayID: displayID, vcp: 0xD6, value: value)
+    }
+
+    // Input Source (VCP 0x60)
+    // Common values: 0x01=VGA, 0x03=DVI-1, 0x04=DVI-2, 0x0F=DP-1, 0x10=DP-2, 0x11=HDMI-1, 0x12=HDMI-2
+    static func readInputSource(displayID: CGDirectDisplayID) -> (value: Int, max: Int)? {
+        loadAVService()
+        if let svc = findAVService(for: displayID) {
+            if let r = readDDCViaAVService(service: svc, vcp: 0x60) { return r }
+        }
+        return readDDCViaIOKit(displayID: displayID, vcp: 0x60)
+    }
+
+    @discardableResult
+    static func writeInputSource(displayID: CGDirectDisplayID, value: Int) -> Bool {
+        loadAVService()
+        if let svc = findAVService(for: displayID) {
+            if writeDDCViaAVService(service: svc, vcp: 0x60, value: value) { return true }
+        }
+        return writeDDCViaIOKit(displayID: displayID, vcp: 0x60, value: value)
+    }
+
+    // Volume (VCP 0x62) and Mute (VCP 0x8D: 1=unmute, 2=mute)
+    static func readVolume(displayID: CGDirectDisplayID) -> (value: Int, max: Int)? {
+        loadAVService()
+        if let svc = findAVService(for: displayID) {
+            if let r = readDDCViaAVService(service: svc, vcp: 0x62) { return r }
+        }
+        return readDDCViaIOKit(displayID: displayID, vcp: 0x62)
+    }
+
+    @discardableResult
+    static func writeVolume(displayID: CGDirectDisplayID, value: Int) -> Bool {
+        loadAVService()
+        if let svc = findAVService(for: displayID) {
+            if writeDDCViaAVService(service: svc, vcp: 0x62, value: value) { return true }
+        }
+        return writeDDCViaIOKit(displayID: displayID, vcp: 0x62, value: value)
+    }
+
+    @discardableResult
+    static func setMute(displayID: CGDirectDisplayID, muted: Bool) -> Bool {
+        loadAVService()
+        let value = muted ? 2 : 1
+        if let svc = findAVService(for: displayID) {
+            if writeDDCViaAVService(service: svc, vcp: 0x8D, value: value) { return true }
+        }
+        return writeDDCViaIOKit(displayID: displayID, vcp: 0x8D, value: value)
+    }
+
     // MARK: - IOAVService discovery
     //
     // Strategy:

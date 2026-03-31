@@ -15,6 +15,10 @@
 		CCAD8A4BE06349C3B3D42B1B /* DDCHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4BA1F7364294DFAB0F38A70 /* DDCHelper.swift */; };
 		DD44556677889900112233DD /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334455667788990011AACC /* main.swift */; };
 		EE55667788990011223344EE /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF66778899001122334455FF /* UpdateChecker.swift */; };
+		AA11223344556677889900BB /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00998877665544332211AA /* SettingsManager.swift */; };
+		CC22334455667788990011DD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11223344556677889900CC /* SettingsView.swift */; };
+		EE33445566778899001122FF /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF22334455667788990011EE /* HotkeyManager.swift */; };
+		AA44556677889900112233BB /* ScheduleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB33445566778899001122AA /* ScheduleManager.swift */; };
 		C887B33B5ADE4018BB45C06B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 58A83FA5BB8A46539034B7F9 /* Assets.xcassets */; };
 		3DAC35F369254243B194639A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 659F3BF7B9C747D7BBF2372A /* IOKit.framework */; };
 /* End PBXBuildFile section */
@@ -28,6 +32,10 @@
 		A4BA1F7364294DFAB0F38A70 /* DDCHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDCHelper.swift; sourceTree = "<group>"; };
 		CC334455667788990011AACC /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		FF66778899001122334455FF /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		BB00998877665544332211AA /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
+		DD11223344556677889900CC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		FF22334455667788990011EE /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		BB33445566778899001122AA /* ScheduleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleManager.swift; sourceTree = "<group>"; };
 		4DC9CB4213C1487D96324D3E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		58A83FA5BB8A46539034B7F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CEEEA5AA169540679C88AB6D /* DisplaySettings.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DisplaySettings.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -74,6 +82,10 @@
 				A4BA1F7364294DFAB0F38A70 /* DDCHelper.swift */,
 				CC334455667788990011AACC /* main.swift */,
 				FF66778899001122334455FF /* UpdateChecker.swift */,
+				BB00998877665544332211AA /* SettingsManager.swift */,
+				DD11223344556677889900CC /* SettingsView.swift */,
+				FF22334455667788990011EE /* HotkeyManager.swift */,
+				BB33445566778899001122AA /* ScheduleManager.swift */,
 				58A83FA5BB8A46539034B7F9 /* Assets.xcassets */,
 				4DC9CB4213C1487D96324D3E /* Info.plist */,
 			);
@@ -158,6 +170,10 @@
 				CCAD8A4BE06349C3B3D42B1B /* DDCHelper.swift in Sources */,
 				DD44556677889900112233DD /* main.swift in Sources */,
 				EE55667788990011223344EE /* UpdateChecker.swift in Sources */,
+				AA11223344556677889900BB /* SettingsManager.swift in Sources */,
+				CC22334455667788990011DD /* SettingsView.swift in Sources */,
+				EE33445566778899001122FF /* HotkeyManager.swift in Sources */,
+				AA44556677889900112233BB /* ScheduleManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
