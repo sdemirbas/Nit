@@ -1,0 +1,32 @@
+# Xcode
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+build/
+.build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.xcuserstate
+*.xcbkptlist
+
+# Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# CocoaPods (not used, just in case)
+Pods/
+Podfile.lock
+
+# Release artifacts (built locally)
+*.zip
+*.dmg
