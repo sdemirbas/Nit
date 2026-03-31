@@ -262,7 +262,6 @@ struct DisplayCardView: View {
     @Binding var display: DisplayModel
     let displayManager: DisplayManager
     @State private var showContrast     = false
-    @State private var showVolume       = false
     @State private var showPowerConfirm = false
 
     var body: some View {
@@ -297,19 +296,6 @@ struct DisplayCardView: View {
                     }
                     .buttonStyle(.plain)
                     .help(showContrast ? "Hide contrast" : "Adjust contrast")
-
-                    // Toggle volume (only if monitor has speakers)
-                    if display.volume >= 0 {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) { showVolume.toggle() }
-                        } label: {
-                            Image(systemName: showVolume ? "speaker.wave.2.fill" : "speaker.wave.2")
-                                .font(.system(size: 11))
-                                .foregroundColor(showVolume ? .accentColor : .secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(showVolume ? "Hide volume" : "Adjust volume")
-                    }
 
                     // Power off button
                     Button { showPowerConfirm = true } label: {
@@ -348,10 +334,9 @@ struct DisplayCardView: View {
                 .help("This display does not support DDC/CI brightness control")
             }
 
-            // Volume slider
-            if display.ddcSupported && display.volume >= 0 && showVolume {
+            // Volume slider — always visible if monitor has speakers
+            if display.ddcSupported && display.volume >= 0 {
                 volumeSlider
-                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(.horizontal, 14)
