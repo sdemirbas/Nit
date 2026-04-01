@@ -41,11 +41,17 @@ final class StatusBarController: NSObject {
     }
 
     private func configurePopover() {
-        popover.contentViewController = NSHostingController(
+        let hosting = NSHostingController(
             rootView: ContentView()
                 .environmentObject(displayManager)
                 .environmentObject(updateChecker)
         )
+        // Keeps preferredContentSize in sync with SwiftUI layout so the popover
+        // is sized correctly before the first show() call (macOS 13+).
+        if #available(macOS 13, *) {
+            hosting.sizingOptions = [.preferredContentSize]
+        }
+        popover.contentViewController = hosting
         popover.behavior = .transient
         popover.animates = true
     }
@@ -184,7 +190,16 @@ final class StatusBarController: NSObject {
 
     private func openPopover() {
         guard let button = statusItem.button else { return }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // NSStatusBarButton lives inside a flipped view hierarchy, but NSButton
+        // itself reports isFlipped = false.  Passing button.bounds + of:button
+        // causes a coordinate-space mismatch that shifts the anchor point down.
+        // Using button.frame expressed in the superview's space avoids this by
+        // letting NSPopover resolve the position through a consistent hierarchy.
+        let (rect, view): (NSRect, NSView) = {
+            if let parent = button.superview { return (button.frame, parent) }
+            return (button.bounds, button)
+        }()
+        popover.show(relativeTo: rect, of: view, preferredEdge: .minY)
         eventMonitor?.start()
         updateChecker.checkForUpdate()
     }
